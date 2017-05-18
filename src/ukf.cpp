@@ -56,6 +56,17 @@ UKF::UKF() {
 	// lambda value
 	lambda_ = 3 - n_x_;
 
+	// Initialize Laser and Radar reading dimensions
+	n_z_laser_ = 2;
+	n_z_radar_ = 3;
+
+	// Set is_initialized to false
+	is_initialized_ = false;
+
+	// Set first prediction to false
+	first_prediction_ = false;
+
+
 	// Set Weights (constants so do it only once)
 	weights_ = VectorXd(2 * n_aug_ + 1);
 	for (int i = 0; i< (2*n_aug_ + 1) ; i++)
@@ -65,6 +76,17 @@ UKF::UKF() {
 		else
 			weights_(i) = 1.0/(2*(lambda_ + n_aug_));
 	}
+
+	R_Las_ = MatrixXd(n_z_laser_, n_z_laser_);
+
+	R_Las_ << std_laspx_*std_laspx_, 0,
+			0, std_laspy_*std_laspy_;
+
+	R_Rad_ = MatrixXd(n_z_radar_,n_z_radar_);
+	R_Rad_ <<    std_radr_*std_radr_, 0, 0,
+			0, std_radphi_*std_radphi_, 0,
+			0, 0,std_radrd_*std_radrd_;
+
 }
 
 UKF::~UKF() {}
@@ -150,6 +172,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package)
 	{
 		// Update State Transition Matrix
 		Prediction(dt);
+		first_prediction_ = true;
 	}
 
 
@@ -157,13 +180,13 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package)
 	 *  Update
 	 ****************************************************************************/
 
-	if ((use_radar_) && (meas_package.sensor_type_ == MeasurementPackage::RADAR))
+	if ((use_radar_) && (meas_package.sensor_type_ == MeasurementPackage::RADAR) && (first_prediction_))
 	{
 		// Radar updates
 		UpdateRadar(meas_package);
 
 	}
-	else if ( (use_laser_) && (meas_package.sensor_type_ == MeasurementPackage::LASER ))
+	else if ( (use_laser_) && (meas_package.sensor_type_ == MeasurementPackage::LASER ) && (first_prediction_))
 	{
 		// Laser updates
 		UpdateLidar(meas_package);
@@ -220,13 +243,13 @@ void UKF::PredictSigmaPoints(MatrixXd Xsig_aug, double delta_t)
 	for(int i = 0; i <2*n_aug_+1; i++)
 	{
 		// recover values
-		float px = Xsig_aug(0,i);
-		float py = Xsig_aug(1,i);
-		float v = Xsig_aug(2,i);
-		float psi = Xsig_aug(3,i);
-		float psi_d = Xsig_aug(4,i);
-		float a_v = Xsig_aug(5,i);
-		float a_psi = Xsig_aug(6,i);
+		const float px = Xsig_aug(0,i);
+		const float py = Xsig_aug(1,i);
+		const float v = Xsig_aug(2,i);
+		const float psi = Xsig_aug(3,i);
+		const float psi_d = Xsig_aug(4,i);
+		const float a_v = Xsig_aug(5,i);
+		const float a_psi = Xsig_aug(6,i);
 
 		/**
 		 * Effectively the Sigma point prediction equation is a multivariate form of Newtons Second equation of motion
@@ -361,12 +384,7 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 		S += weights_(i) * zdiff * zdiff.transpose();
 	}
 
-	// Create Laser Noise Cov Matrix
-	MatrixXd R = MatrixXd(n_z, n_z);
-
-	R << std_laspx_*std_laspx_, 0,
-			0, std_laspy_*std_laspy_;
-	S = S + R;
+	S = S + R_Las_;
 
 	// Cross Correlation Matrix
 	MatrixXd Tc = MatrixXd(n_x_, n_z);
@@ -433,7 +451,12 @@ void UKF::UpdateRadar(MeasurementPackage meas_package)
 
 		// measurement model
 		Zsig(0,i) = sqrt(px*px + py*py);
-		Zsig(1,i) = atan2(py,px);
+
+		// avoid atan2 (0,0)
+		if(fabs(px)<0.0001 and fabs(py)<0.0001)
+			Zsig(1,i) = 0;
+		else
+			Zsig(1,i) = atan2(py,px);
 
 		//Handle where both are zero to avoid a divide by zero case
 		if (Zsig(0,i) == 0)
@@ -467,11 +490,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package)
 
 
 	//add measurement noise covariance matrix
-	MatrixXd R = MatrixXd(n_z,n_z);
-	R <<    std_radr_*std_radr_, 0, 0,
-			0, std_radphi_*std_radphi_, 0,
-			0, 0,std_radrd_*std_radrd_;
-	S += R;
+	S += R_Rad_;
 
 	//create matrix for cross correlation Tc
 	MatrixXd Tc = MatrixXd(n_x_, n_z);

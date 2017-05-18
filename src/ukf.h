@@ -65,6 +65,19 @@ public:
 	///* Augmented state dimension
 	int n_aug_;
 
+	///* Laser var length
+	int n_z_laser_;
+
+	///* RADAR var length
+	int n_z_radar_;
+
+	///* Laser covariance Matrix
+	MatrixXd R_Las_;
+
+	///* RADAR covariance Matrix
+	MatrixXd R_Rad_;
+
+
 	///* Sigma point spreading parameter
 	double lambda_;
 
@@ -73,6 +86,10 @@ public:
 
 	///* the current NIS for laser
 	double NIS_laser_;
+
+	///* Flag to check whether the first prediction has happened
+	bool first_prediction_;
+
 
 	/**
 	 * Constructor
