@@ -18,4 +18,5 @@ Self-Driving Car Engineer Nanodegree Program
    some sample inputs in 'data/'.
     - eg. `./UnscentedKF ../data/obj_pose-laser-radar-synthetic-input.txt`
 
-
+## Running and Testing performance
+1. Use the Term 2 Simulator available at udacity for Evaluation
