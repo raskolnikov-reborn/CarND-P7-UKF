@@ -1,0 +1,1 @@
+time_stamp	px_state	py_state	v_state	yaw_angle_state	yaw_rate_state	sensor_type	NIS	px_measured	py_measured	px_ground_truth	py_ground_truth	vx_ground_truth	vy_ground_truth
